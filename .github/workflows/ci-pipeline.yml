@@ -1,0 +1,48 @@
+name: Core CI Pipeline
+
+# Тригери: коли запускати пайплайн
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # Дозволяє запускати вручну в UI GitHub
+
+# Змінні середовища, доступні для всіх задач у цьому файлі
+env:
+  APP_ENV: staging
+  DOCKER_IMAGE_NAME: my-custom-service
+
+jobs:
+  # Задача 1: Перевірка коду та лінтинг
+  lint-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Checkout repository code
+        # Стандартний екшен, який клонує ваш репозиторій на віртуальну машину раннера
+        uses: actions/checkout@v4
+
+      - name: 2. Check environment variables
+        run: |
+          echo "Running validation in $APP_ENV mode"
+          echo "Current Git SHA: ${{ github.sha }}"
+
+      - name: 3. Validate bash script syntax
+        # Прапорець -n у bash перевіряє синтаксис скрипта без його фактичного виконання
+        run: bash -n app.sh
+
+  # Задача 2: Імітація збірки (запускається ТІЛЬКИ якщо lint-and-validate пройшов успішно)
+  build-artifact:
+    runs-on: ubuntu-latest
+    needs: lint-and-validate
+    steps:
+      - name: 1. Checkout code
+        uses: actions/checkout@v4
+
+      - name: 2. Run script test
+        run: ./app.sh
+
+      - name: 3. Simulate Docker image build tag
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "Building image: $DOCKER_IMAGE_NAME:$SHORT_SHA"
